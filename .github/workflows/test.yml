@@ -26,16 +26,22 @@ jobs:
       with:
         fetch-depth: 0
         
-    - name: Check DCO
-      uses: tj-actions/dco@v1.2
+    - name: Get PR Commits
+      id: 'get-pr-commits'
+      uses: tim-actions/get-pr-commits@master
       with:
-        extra_checkout_args: '--no-tags'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: DCO Check
+      uses: tim-actions/dco@master
+      with:
+        commits: ${{ steps.get-pr-commits.outputs.commits }}
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -184,7 +190,7 @@ jobs:
     
     - name: Build container image
       run: |
-        docker build -t flightctl-mcp:test .
+        docker build -f Containerfile -t flightctl-mcp:test .
         echo "✅ Container image built successfully"
     
     - name: Test container runs

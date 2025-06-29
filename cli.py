@@ -1,9 +1,9 @@
-from pathlib import Path
 import os
 import shutil
 import subprocess
 import tempfile
 import urllib.parse
+
 
 class FlightctlCLI:
     def __init__(self, api_url: str, arch: str = "amd64", os_name: str = "linux"):
@@ -25,7 +25,7 @@ class FlightctlCLI:
             print("flightctl CLI already available system-wide, skipping download")
             self.cli_path = existing_cli
             return
-            
+
         domain = urllib.parse.urlparse(self.api_url).netloc
         domain_prefix = domain.split("api.", 1)[-1]
         cli_url = f"https://cli-artifacts.{domain_prefix}/{self.arch}/{self.os_name}/flightctl-{self.os_name}-{self.arch}.tar.gz"

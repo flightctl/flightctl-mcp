@@ -9,11 +9,29 @@ setup_logging()
 
 mcp = FastMCP("mcp-server")
 
-# Initialize configuration (reads from flightctl config and environment variables)
-config = Configuration()
-client = FlightControlClient(config)  # This validates that api_base_url is set
-cli = FlightctlCLI(config.api_base_url)  # type: ignore
-cli.download()
+# Global variables for lazy initialization
+_client = None
+_cli = None
+
+
+def get_client():
+    """Get or create the FlightControlClient instance."""
+    global _client
+    if _client is None:
+        config = Configuration()
+        _client = FlightControlClient(config)
+    return _client
+
+
+def get_cli():
+    """Get or create the FlightctlCLI instance."""
+    global _cli
+    if _cli is None:
+        config = Configuration()
+        _cli = FlightctlCLI(config.api_base_url)  # type: ignore
+        _cli.download()
+    return _cli
+
 
 @mcp.tool()
 async def query_devices(
@@ -86,14 +104,11 @@ async def query_devices(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_devices(label_selector=label_selector, field_selector=field_selector, limit=limit)
+    return get_client().query_devices(label_selector=label_selector, field_selector=field_selector, limit=limit)
+
 
 @mcp.tool()
-async def query_fleets(
-    label_selector: str = "",
-    field_selector: str = "",
-    limit: int = 1000
-) -> List[Dict[str, Any]]:
+async def query_fleets(label_selector: str = "", field_selector: str = "", limit: int = 1000) -> List[Dict[str, Any]]:
     """
     Query Flight Control for fleets using label and field selectors.
 
@@ -152,13 +167,11 @@ async def query_fleets(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_fleets(label_selector=label_selector, field_selector=field_selector, limit=limit)
+    return get_client().query_fleets(label_selector=label_selector, field_selector=field_selector, limit=limit)
+
 
 @mcp.tool()
-async def query_events(
-    field_selector: str = "",
-    limit: int = 1000
-) -> List[Dict[str, Any]]:
+async def query_events(field_selector: str = "", limit: int = 1000) -> List[Dict[str, Any]]:
     """
     Query Flight Control for events using field selectors.
 
@@ -213,13 +226,12 @@ async def query_events(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_events(field_selector=field_selector, limit=limit)
+    return get_client().query_events(field_selector=field_selector, limit=limit)
+
 
 @mcp.tool()
 async def query_enrollment_requests(
-    label_selector: str = "",
-    field_selector: str = "",
-    limit: int = 1000
+    label_selector: str = "", field_selector: str = "", limit: int = 1000
 ) -> List[Dict[str, Any]]:
     """
     Query Flight Control for enrollment requests using label and field selectors.
@@ -278,14 +290,14 @@ async def query_enrollment_requests(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_enrollment_requests(field_selector=field_selector, limit=limit)
+    return get_client().query_enrollment_requests(
+        label_selector=label_selector, field_selector=field_selector, limit=limit
+    )
 
 
 @mcp.tool()
 async def query_repositories(
-    label_selector: str = "",
-    field_selector: str = "",
-    limit: int = 1000
+    label_selector: str = "", field_selector: str = "", limit: int = 1000
 ) -> List[Dict[str, Any]]:
     """
     Query Flight Control for repositories using label and field selectors.
@@ -342,14 +354,12 @@ async def query_repositories(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_repositories(label_selector=label_selector, field_selector=field_selector, limit=limit)
+    return get_client().query_repositories(label_selector=label_selector, field_selector=field_selector, limit=limit)
 
 
 @mcp.tool()
 async def query_resource_syncs(
-    label_selector: str = "",
-    field_selector: str = "",
-    limit: int = 1000
+    label_selector: str = "", field_selector: str = "", limit: int = 1000
 ) -> List[Dict[str, Any]]:
     """
     Query Flight Control for resource syncs using label and field selectors.
@@ -407,7 +417,8 @@ async def query_resource_syncs(
     Raises:
         RuntimeError: If a network or HTTP error occurs while querying the MCP server.
     """
-    return client.query_resource_syncs(label_selector=label_selector, field_selector=field_selector, limit=limit)
+    return get_client().query_resource_syncs(label_selector=label_selector, field_selector=field_selector, limit=limit)
+
 
 @mcp.tool()
 async def run_command_on_device(device_name: str, command: str) -> str:
@@ -435,11 +446,12 @@ async def run_command_on_device(device_name: str, command: str) -> str:
     Raises:
         RuntimeError: If the CLI is not found or the command fails to execute.
     """
-    return client.run_console_command(cli.cli_path, device_name, command)
+    return get_client().run_console_command(get_cli().cli_path, device_name, command)
 
 
 if __name__ == "__main__":
     from typing import Literal
+
     transport_env = os.environ.get("MCP_TRANSPORT", "stdio")
     transport: Literal["stdio", "sse", "streamable-http"] = "stdio"
     if transport_env in ["stdio", "sse", "streamable-http"]:

@@ -18,34 +18,30 @@ def setup_logging():
     log_dir = Path.home() / ".local" / "share" / "flightctl-mcp"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "flightctl-mcp.log"
-    
+
     # Get log level from environment
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     numeric_level = getattr(logging, log_level, logging.INFO)
-    
+
     # Configure root logger
     logger = logging.getLogger()
     logger.setLevel(numeric_level)
-    
+
     # Remove any existing handlers to avoid duplicates
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Create rotating file handler (10MB max, keep 5 files)
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_file, maxBytes=10*1024*1024, backupCount=5
-    )
+    file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
     file_handler.setLevel(numeric_level)
-    
+
     # Create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     logger.addHandler(file_handler)
-    
+
     # Log startup message
     logger.info("FlightCtl MCP Server logging initialized - log file: %s", log_file)
     return logger
@@ -53,16 +49,19 @@ def setup_logging():
 
 class FlightControlError(Exception):
     """Base exception for Flight Control API errors."""
+
     pass
 
 
 class AuthenticationError(FlightControlError):
     """Raised when authentication fails."""
+
     pass
 
 
 class APIError(FlightControlError):
     """Raised when API requests fail."""
+
     def __init__(self, message: str, status_code: Optional[int] = None, response_text: Optional[str] = None):
         super().__init__(message)
         self.status_code = status_code
@@ -71,17 +70,17 @@ class APIError(FlightControlError):
 
 class Configuration:
     """Configuration manager that reads from flightctl config and environment variables."""
-    
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.config_path = Path.home() / ".config" / "flightctl" / "client.yaml"
         self.certs_path = Path.home() / ".config" / "flightctl" / "certs"
         self._load_config()
-    
+
     def _load_config(self):
         """Load configuration from flightctl client.yaml and environment variables."""
         self.logger.debug("Loading configuration from %s", self.config_path)
-        
+
         # Default values
         self.api_base_url = None
         self.oidc_token_url = None
@@ -89,39 +88,39 @@ class Configuration:
         self.refresh_token = None
         self.insecure_skip_verify = False
         self.ca_cert_path = None
-        
+
         # Try to read from flightctl config file
         if self.config_path.exists():
             try:
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path, "r") as f:
                     config = yaml.safe_load(f)
-                
+
                 # Extract service configuration
-                service_config = config.get('service', {})
-                self.api_base_url = service_config.get('server', '').rstrip('/')
-                self.insecure_skip_verify = service_config.get('insecureSkipVerify', False)
-                
+                service_config = config.get("service", {})
+                self.api_base_url = service_config.get("server", "").rstrip("/")
+                self.insecure_skip_verify = service_config.get("insecureSkipVerify", False)
+
                 # Extract authentication configuration
-                auth_config = config.get('authentication', {})
-                auth_provider = auth_config.get('auth-provider', {})
-                provider_config = auth_provider.get('config', {})
-                
-                self.oidc_token_url = provider_config.get('server', '').rstrip('/')
-                self.client_id = provider_config.get('client-id', 'flightctl')
-                self.refresh_token = provider_config.get('refresh-token')
-                
+                auth_config = config.get("authentication", {})
+                auth_provider = auth_config.get("auth-provider", {})
+                provider_config = auth_provider.get("config", {})
+
+                self.oidc_token_url = provider_config.get("server", "").rstrip("/")
+                self.client_id = provider_config.get("client-id", "flightctl")
+                self.refresh_token = provider_config.get("refresh-token")
+
                 # Check for certificate authority
-                ca_cert = provider_config.get('certificate-authority')
+                ca_cert = provider_config.get("certificate-authority")
                 if ca_cert and Path(ca_cert).exists():
                     self.ca_cert_path = ca_cert
-                
+
                 self.logger.info("Loaded configuration from flightctl config file")
-                    
+
             except Exception as e:
                 self.logger.warning("Failed to read flightctl config: %s", e)
         else:
             self.logger.info("No flightctl config file found at %s", self.config_path)
-        
+
         # Environment variable overrides (higher priority)
         if os.environ.get("API_BASE_URL"):
             self.api_base_url = os.environ["API_BASE_URL"].rstrip("/")
@@ -145,18 +144,18 @@ class Configuration:
                 self.logger.debug("CA_CERT_PATH overridden by environment variable: %s", self.ca_cert_path)
             else:
                 self.logger.warning("CA_CERT_PATH points to non-existent file: %s", ca_path)
-        
+
         # Auto-fix OIDC URL format if needed
-        if self.oidc_token_url and not self.oidc_token_url.endswith('/protocol/openid-connect/token'):
+        if self.oidc_token_url and not self.oidc_token_url.endswith("/protocol/openid-connect/token"):
             import re
+
             match = re.match(r"(https?://.+/realms/[^/]+)$", self.oidc_token_url)
             if match:
                 self.oidc_token_url = match.group(1) + "/protocol/openid-connect/token"
                 self.logger.debug("Auto-corrected OIDC token URL to: %s", self.oidc_token_url)
-        
-        self.logger.info("Configuration loaded - API: %s, Skip SSL: %s", 
-                        self.api_base_url, self.insecure_skip_verify)
-    
+
+        self.logger.info("Configuration loaded - API: %s, Skip SSL: %s", self.api_base_url, self.insecure_skip_verify)
+
     def get_ssl_verify(self):
         """Get SSL verification setting for requests."""
         if self.insecure_skip_verify:
@@ -171,7 +170,7 @@ class FlightControlClient:
     def __init__(self, config: Optional[Configuration] = None):
         self.logger = logging.getLogger(__name__)
         self.config = config or Configuration()
-        
+
         # Validate required configuration
         if not self.config.api_base_url:
             raise FlightControlError("API_BASE_URL not configured. Set environment variable or run 'flightctl login'")
@@ -183,7 +182,7 @@ class FlightControlClient:
         self._token_lock = threading.Lock()
         self._access_token = None
         self._token_expiry = 0  # Epoch seconds
-        
+
         self.logger.info("FlightControl client initialized for API: %s", self.config.api_base_url)
 
     def query_devices(
@@ -281,7 +280,7 @@ class FlightControlClient:
             FlightControlError: On CLI failure or configuration issues.
         """
         self.logger.info("Running console command on device '%s': %s", device_name, command)
-        
+
         if not shutil.which("flightctl"):
             self.logger.error("flightctl CLI not found in PATH")
             raise FlightControlError("flightctl CLI not found. Please ensure it's installed and in PATH.")
@@ -310,7 +309,7 @@ class FlightControlClient:
         ]
         # Remove empty strings from the command
         login_cmd = [arg for arg in login_cmd if arg]
-        
+
         self.logger.debug("Logging in to flightctl console")
         try:
             result = subprocess.run(login_cmd, check=True, capture_output=True, text=True)
@@ -325,24 +324,24 @@ class FlightControlClient:
             "console",
             f"device/{device_name}",
             "--insecure-skip-tls-verify" if self.config.insecure_skip_verify else "",
-            "--"
+            "--",
         ] + command.split()
         # Remove empty strings from the command
         cmd = [arg for arg in cmd if arg]
 
-        self.logger.debug("Executing console command: %s", ' '.join(cmd[:-len(command.split()):]))
+        self.logger.debug("Executing console command: %s", " ".join(cmd[: -len(command.split())]))
         try:
             result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             self.logger.info("Console command completed successfully on device '%s'", device_name)
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            self.logger.error("Console command failed on device '%s': exit code %d, stderr: %s", 
-                            device_name, e.returncode, e.stderr)
+            self.logger.error(
+                "Console command failed on device '%s': exit code %d, stderr: %s", device_name, e.returncode, e.stderr
+            )
             raise FlightControlError(f"Console command failed on device '{device_name}': {e.stderr}")
         except Exception as e:
             self.logger.error("Unexpected error running console command on device '%s': %s", device_name, e)
             raise FlightControlError(f"Unexpected error running console command: {e}")
-
 
     # --- Internal Methods ---
 
@@ -373,7 +372,7 @@ class FlightControlClient:
                 return self._access_token
             except requests.exceptions.RequestException as e:
                 self.logger.error("Failed to refresh OIDC token - network error: %s", e)
-                if hasattr(e, 'response') and e.response is not None:
+                if hasattr(e, "response") and e.response is not None:
                     self.logger.error("Response status: %s, body: %s", e.response.status_code, e.response.text)
                     raise AuthenticationError(f"Failed to refresh OIDC token: HTTP {e.response.status_code}")
                 else:
@@ -396,14 +395,17 @@ class FlightControlClient:
         url = f"{self.config.api_base_url}/api/v1/{resource}"
         items: List[Dict[str, Any]] = []
         continue_token: Optional[str] = None
-        
-        self.logger.debug("Querying %s with label_selector=%s, field_selector=%s, limit=%s", 
-                         resource, label_selector, field_selector, limit)
-        
+
+        self.logger.debug(
+            "Querying %s with label_selector=%s, field_selector=%s, limit=%s",
+            resource,
+            label_selector,
+            field_selector,
+            limit,
+        )
+
         try:
-            headers = {
-                "Authorization": f"Bearer {self._get_access_token()}"
-            }
+            headers = {"Authorization": f"Bearer {self._get_access_token()}"}
         except AuthenticationError:
             self.logger.error("Authentication failed for %s query", resource)
             raise
@@ -420,7 +422,7 @@ class FlightControlClient:
                 params["continue"] = continue_token
 
             self.logger.debug("Fetching page %d for %s", page_count, resource)
-            
+
             try:
                 resp = requests.get(url, headers=headers, params=params, verify=self.config.get_ssl_verify())
                 resp.raise_for_status()
@@ -434,8 +436,11 @@ class FlightControlClient:
                 elif e.response.status_code == 404:
                     raise APIError(f"Resource not found: {resource}", e.response.status_code)
                 else:
-                    raise APIError(f"Failed to query {resource}: HTTP {e.response.status_code}", 
-                                 e.response.status_code, e.response.text)
+                    raise APIError(
+                        f"Failed to query {resource}: HTTP {e.response.status_code}",
+                        e.response.status_code,
+                        e.response.text,
+                    )
             except requests.exceptions.RequestException as e:
                 self.logger.error("Network error querying %s: %s", resource, e)
                 raise APIError(f"Network error querying {resource}: {e}")
@@ -448,7 +453,7 @@ class FlightControlClient:
 
             page_items = data.get("items", [])
             items.extend(page_items)
-            
+
             self.logger.debug("Fetched %d items from page %d of %s", len(page_items), page_count, resource)
 
             if limit and len(items) >= limit:
