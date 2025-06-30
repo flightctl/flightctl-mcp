@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
 from mcp.server.fastmcp import FastMCP
 from resource_queries import FlightControlClient, Configuration, setup_logging
 from cli import FlightctlCLI
@@ -450,10 +450,25 @@ async def run_command_on_device(device_name: str, command: str) -> str:
 
 
 if __name__ == "__main__":
-    from typing import Literal
+    # Get transport configuration from environment variables
+    transport_env = os.environ.get("MCP_TRANSPORT", "streamable-http")
 
-    transport_env = os.environ.get("MCP_TRANSPORT", "stdio")
-    transport: Literal["stdio", "sse", "streamable-http"] = "stdio"
-    if transport_env in ["stdio", "sse", "streamable-http"]:
-        transport = transport_env  # type: ignore
-    mcp.run(transport=transport)
+    # Validate transport type
+    if transport_env not in ["stdio", "sse", "streamable-http"]:
+        transport_env = "streamable-http"
+
+    transport: Literal["stdio", "sse", "streamable-http"] = transport_env  # type: ignore
+
+    # Run the server with appropriate transport
+    if transport == "stdio":
+        mcp.run(transport=transport)
+    else:
+        # For HTTP-based transports, FastMCP will use environment variables or defaults
+        # Ensure the environment variables are set for FastMCP to pick up
+        if "MCP_HOST" not in os.environ:
+            os.environ["MCP_HOST"] = "127.0.0.1"
+        if "MCP_PORT" not in os.environ:
+            os.environ["MCP_PORT"] = "8000"
+
+        # Run with HTTP transport
+        mcp.run(transport=transport)
