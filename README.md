@@ -23,6 +23,29 @@ This will create a local image named `mcp-server:latest` that you can use to run
 
 ---
 
+## Pre-built Container Images
+
+**✅ Ready-to-use images are automatically published to quay.io!**
+
+```bash
+# Pull the latest stable image
+docker pull quay.io/flightctl/flightctl-mcp:latest
+
+# Run immediately with streamable-http transport
+docker run -p 8000:8000 quay.io/flightctl/flightctl-mcp:latest
+```
+
+### Automated Publishing
+- 🔄 **Automatic builds**: Every commit merged to `main` triggers a new build
+- ✅ **Quality assured**: Only builds after passing all tests (linting, type checking, unit tests)
+- 🔒 **Security scanned**: All images are scanned for vulnerabilities with Trivy
+- 🏗️ **Multi-platform**: Available for both `linux/amd64` and `linux/arm64`
+- 🏷️ **Smart tagging**: Images tagged with `latest`, branch name, and commit SHA
+
+> **For maintainers**: See [CONTAINER-PUBLISHING.md](./CONTAINER-PUBLISHING.md) for setup instructions and workflow details.
+
+---
+
 ## Running with Podman or Docker
 
 ### Example: Using Automatic Configuration (Recommended)
@@ -43,7 +66,7 @@ If you've run `flightctl login`, you can mount the config directory. **Note**: T
         "-e", "MCP_TRANSPORT",
         "-e", "MCP_HOST",
         "-e", "MCP_PORT",
-        "localhost/mcp-server:latest"
+        "quay.io/flightctl/flightctl-mcp:latest"
       ],
       "env": {
         "MCP_TRANSPORT": "streamable-http",
@@ -78,7 +101,7 @@ For environments where mounting the config file isn't possible:
         "-e", "MCP_TRANSPORT",
         "-e", "MCP_HOST",
         "-e", "MCP_PORT",
-        "localhost/mcp-server:latest"
+        "quay.io/flightctl/flightctl-mcp:latest"
       ],
       "env": {
         "API_BASE_URL": "https://api.flightctl.example.com",
