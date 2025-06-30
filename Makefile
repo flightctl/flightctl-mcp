@@ -12,7 +12,7 @@ help:
 	@echo "  test-integration - Run integration tests with mocks"
 	@echo "  test-live      - Run tests against live Flight Control instance"
 	@echo "  test-coverage  - Run tests with coverage report"
-	@echo "  lint           - Run linting checks"
+	@echo "  lint           - Run comprehensive linting checks (formatting, security, syntax)"
 	@echo "  format         - Format code with black"
 	@echo "  clean          - Clean up temporary files"
 	@echo "  build          - Build container image"
@@ -21,7 +21,7 @@ help:
 # Install development dependencies
 install-dev:
 	pip install -r requirements.txt
-	pip install black flake8 mypy
+	pip install black flake8 mypy pytest-cov types-PyYAML types-requests
 
 # Run all tests except live integration
 test:
@@ -47,8 +47,35 @@ test-coverage:
 
 # Lint code
 lint:
-	flake8 *.py --max-line-length=120 --ignore=E501,W503
-	mypy *.py --ignore-missing-imports || true
+	@echo "🔧 Running comprehensive linting checks..."
+	@echo ""
+	@echo "📋 Validating test files..."
+	python -m py_compile test_flightctl_mcp.py
+	python -m py_compile test_live_instance.py
+	python -m py_compile test_streamable_http.py
+	@echo "✅ Test files are syntactically valid"
+	@echo ""
+	@echo "🎨 Checking code formatting with black..."
+	black --check --line-length=120 *.py
+	@echo "✅ Code formatting is correct"
+	@echo ""
+	@echo "📏 Running flake8 linting..."
+	flake8 *.py --max-line-length=120 --ignore=E501,W503 --show-source --statistics
+	@echo "✅ Linting passed"
+	@echo ""
+	@echo "🔍 Running mypy type checking..."
+	@mypy *.py --ignore-missing-imports --show-error-codes --pretty && echo "✅ Type checking passed" || echo "⚠️ Type checking completed with warnings"
+	@echo ""
+	@echo "🔒 Running basic security checks..."
+	@echo "   Checking for hardcoded secrets..."
+	@! grep -r "password.*=" --include="*.py" . | grep -v "test" | grep -v "self.password" | grep -v "config.password" | grep -v "password.*input" || echo "⚠️ Potential hardcoded passwords found"
+	@! grep -r "secret.*=" --include="*.py" . | grep -v "test" | grep -v "self.secret" | grep -v "config.secret" | grep -v "GITHUB_TOKEN" || echo "⚠️ Potential hardcoded secrets found"  
+	@! grep -r "token.*=" --include="*.py" . | grep -v "test" | grep -v "self.*token" | grep -v "config.*token" | grep -v "_token" | grep -v "continue_token" || echo "⚠️ Potential hardcoded tokens found"
+	@echo "   Checking for shell injection risks..."
+	@! grep -r "shell=True" --include="*.py" . || echo "⚠️ Shell injection risk found"
+	@echo "✅ Basic security check completed"
+	@echo ""
+	@echo "🎉 All linting checks completed!"
 
 # Format code
 format:

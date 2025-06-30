@@ -149,39 +149,14 @@ jobs:
       with:
         python-version: "3.11"
     
-    - name: Install linting tools
+    - name: Install development dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install black flake8 mypy
-        pip install -r requirements.txt
+        make install-dev
     
-    - name: Validate test files
+    - name: Run comprehensive linting checks
       run: |
-        # Check that test files are syntactically valid
-        python -m py_compile test_flightctl_mcp.py
-        python -m py_compile test_live_instance.py
-        echo "✅ Test files are syntactically valid"
-    
-    - name: Run black formatting check
-      run: |
-        black --check --line-length=120 *.py
-        echo "✅ Code formatting is correct"
-    
-    - name: Run flake8 linting
-      run: |
-        flake8 *.py --max-line-length=120 --ignore=E501,W503 --show-source --statistics
-        echo "✅ Linting passed"
-    
-    - name: Run mypy type checking
-      run: |
-        mypy *.py --ignore-missing-imports --show-error-codes --pretty || echo "⚠️ Type checking completed with warnings"
-    
-    - name: Check for common security issues
-      run: |
-        # Check for hardcoded secrets or unsafe patterns
-        ! grep -r "password\|secret\|token" --include="*.py" . | grep -v "test" | grep -v "REFRESH_TOKEN" | grep -v "refresh_token" | grep -v "access_token" || echo "⚠️ Potential hardcoded secrets found"
-        ! grep -r "shell=True" --include="*.py" . || echo "⚠️ Shell injection risk found"
-        echo "✅ Basic security check completed"
+        make lint
 
   container:
     runs-on: ubuntu-latest

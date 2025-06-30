@@ -350,6 +350,7 @@ class FlightControlClient:
             now = time.time()
             if self._access_token and now < self._token_expiry - 60:
                 self.logger.debug("Using cached access token")
+                assert self._access_token is not None
                 return self._access_token
 
             self.logger.debug("Refreshing OIDC access token")
@@ -366,10 +367,13 @@ class FlightControlClient:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                self._access_token = data["access_token"]
+                access_token = data["access_token"]
+                if not access_token or not isinstance(access_token, str):
+                    raise AuthenticationError("Invalid access token received from OIDC provider")
+                self._access_token = access_token
                 self._token_expiry = now + data.get("expires_in", 3600)
                 self.logger.info("Successfully refreshed OIDC access token")
-                return self._access_token
+                return access_token
             except requests.exceptions.RequestException as e:
                 self.logger.error("Failed to refresh OIDC token - network error: %s", e)
                 if hasattr(e, "response") and e.response is not None:
