@@ -3,6 +3,7 @@ fastmcp
 requests>=2.0.0
 PyYAML>=6.0
 uvicorn>=0.30.0
+aiohttp
 
 # Testing dependencies
 pytest>=7.0.0

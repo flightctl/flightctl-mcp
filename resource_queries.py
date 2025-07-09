@@ -15,7 +15,7 @@ import requests
 def setup_logging():
     """Set up file-based logging for the MCP server."""
     # Create logs directory
-    log_dir = Path.home() / ".local" / "share" / "flightctl-mcp"
+    log_dir = Path("/tmp/flightctl-mcp")
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "flightctl-mcp.log"
 
