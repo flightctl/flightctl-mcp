@@ -123,16 +123,18 @@ For environments where mounting the config file isn't possible:
 
 ## Transport Configuration
 
-The MCP server now supports three transport methods with `streamable-http` as the default:
+The MCP server supports three transport methods with `stdio` as the default for maximum compatibility:
 
-### Streamable HTTP (Default - Recommended)
+### STDIO (Default - Most Compatible)
+- **Best for**: Local tools, command-line scripts, integrations with clients like Claude Desktop
+- **Configuration**: Set `MCP_TRANSPORT=stdio` (default)
+- **Why default**: Maximum compatibility with existing MCP clients
+
+### Streamable HTTP (Recommended for Web Deployments)
 - **Best for**: Web-based deployments, microservices, exposing MCP over a network
 - **Default endpoint**: `http://127.0.0.1:8000/mcp`
-- **Configuration**: Set `MCP_TRANSPORT=streamable-http` (default)
-
-### STDIO
-- **Best for**: Local tools, command-line scripts, integrations with clients like Claude Desktop
-- **Configuration**: Set `MCP_TRANSPORT=stdio`
+- **Configuration**: Set `MCP_TRANSPORT=streamable-http`
+- **Note**: Requires MCP clients that support the new streamable-http transport
 
 ### SSE (Server-Sent Events)
 - **Best for**: Legacy deployments that specifically require SSE
@@ -180,7 +182,7 @@ The following environment variables can override or supplement the automatic con
 ### 3. MCP Transport Configuration
 The following environment variables control the MCP server transport and network settings:
 
-- **MCP_TRANSPORT:** Transport mechanism (`stdio`, `sse`, `streamable-http`) - **Optional** (defaults to `streamable-http`)
+- **MCP_TRANSPORT:** Transport mechanism (`stdio`, `sse`, `streamable-http`) - **Optional** (defaults to `stdio`)
 - **MCP_HOST:** Host to bind to for HTTP transports - **Optional** (defaults to `127.0.0.1`)
 - **MCP_PORT:** Port to listen on for HTTP transports - **Optional** (defaults to `8000`)
 - **MCP_PATH:** Path for the MCP endpoint - **Optional** (defaults to `/mcp` for streamable-http)
@@ -210,14 +212,14 @@ The server provides robust error handling:
 
 ### Local Development
 ```bash
-# Run with default streamable-http transport
+# Run with default stdio transport
 python main.py
 
-# Run with custom configuration
-MCP_TRANSPORT=streamable-http MCP_HOST=0.0.0.0 MCP_PORT=8080 python main.py
+# Run with streamable-http transport (for web deployments)
+MCP_TRANSPORT=streamable-http python main.py
 
-# Run with stdio transport (for Claude Desktop integration)
-MCP_TRANSPORT=stdio python main.py
+# Run with custom HTTP configuration
+MCP_TRANSPORT=streamable-http MCP_HOST=0.0.0.0 MCP_PORT=8080 python main.py
 ```
 
 ### Accessing the HTTP Endpoint

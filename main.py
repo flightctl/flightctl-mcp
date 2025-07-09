@@ -451,11 +451,11 @@ async def run_command_on_device(device_name: str, command: str) -> str:
 
 if __name__ == "__main__":
     # Get transport configuration from environment variables
-    transport_env = os.environ.get("MCP_TRANSPORT", "streamable-http")
+    transport_env = os.environ.get("MCP_TRANSPORT", "stdio")
 
     # Validate transport type
     if transport_env not in ["stdio", "sse", "streamable-http"]:
-        transport_env = "streamable-http"
+        transport_env = "stdio"
 
     transport: Literal["stdio", "sse", "streamable-http"] = transport_env  # type: ignore
 
@@ -469,6 +469,8 @@ if __name__ == "__main__":
             os.environ["MCP_HOST"] = "127.0.0.1"
         if "MCP_PORT" not in os.environ:
             os.environ["MCP_PORT"] = "8000"
+        if "MCP_PATH" not in os.environ:
+            os.environ["MCP_PATH"] = "/mcp"
 
         # Run with HTTP transport
         mcp.run(transport=transport)
